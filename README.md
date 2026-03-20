@@ -1,263 +1,155 @@
-# RAFT ArXiv: Retrieval-Augmented Fine-Tuning for Scientific Q&A
+# RAFT ArXiv — Retrieval-Augmented Fine-Tuning on Scientific Papers
 
-A complete implementation of RAFT (Retrieval-Augmented Fine-Tuning) for building a question-answering system over ArXiv papers. This project demonstrates the full pipeline from data collection to model deployment.
-
-## 🎯 Overview
-
-This project implements RAFT (Retrieval-Augmented Fine-Tuning) to create a specialized Q&A system for machine learning and AI research papers from ArXiv. The system combines:
-
-- **Retrieval**: Semantic search over paper abstracts using ChromaDB and sentence transformers
-- **Augmentation**: Context-aware answer generation using retrieved documents
-- **Fine-Tuning**: QLoRA fine-tuning of Phi-2 model on synthetic RAFT dataset
-- **API**: FastAPI server with web interface for model comparison
-
-## 🏗️ Architecture
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   ArXiv Papers  │───▶│  RAFT Dataset   │───▶│  Fine-tuned     │
-│   (Raw Data)    │    │  (Synthetic Q&A)│    │  Phi-2 Model    │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                       │                       │
-         ▼                       ▼                       ▼
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Text Chunks   │    │   Base RAG      │    │   RAFT Model    │
-│   (ChromaDB)    │    │   (Llama 3)     │    │   (Phi-2)       │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-                                                       │
-                                                       ▼
-                                            ┌─────────────────┐
-                                            │   FastAPI        │
-                                            │   Web Interface  │
-                                            └─────────────────┘
-```
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Python 3.11+
-- Ollama (for dataset generation)
-- 16GB+ RAM recommended
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/raft-arxiv.git
-   cd raft-arxiv
-   ```
-
-2. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Install Ollama and pull Llama 3**
-   ```bash
-   # Install Ollama from https://ollama.ai
-   ollama pull llama3
-   ```
-
-### Data Pipeline
-
-Run the complete pipeline in sequence:
-
-1. **Fetch and chunk papers**
-   ```bash
-   python src/fetch_papers.py
-   ```
-
-2. **Generate RAFT dataset**
-   ```bash
-   python src/build_raft_dataset.py
-   ```
-
-3. **Fine-tune Phi-2 model**
-   ```bash
-   python src/finetune_qlora.py
-   ```
-
-4. **Build baseline RAG**
-   ```bash
-   python src/build_baseline_rag.py
-   ```
-
-5. **Evaluate models**
-   ```bash
-   python eval/evaluate.py
-   ```
-
-### API Server
-
-Start the FastAPI server:
-
-```bash
-python api/serve.py
-```
-
-Or using Docker:
-
-```bash
-docker build -t raft-arxiv .
-docker run -p 8000:8000 raft-arxiv
-```
-
-Visit `http://localhost:8000` for the web interface.
-
-## 📁 Project Structure
-
-```
-raft-arxiv/
-├── api/                          # FastAPI server
-│   ├── serve.py                 # Main API endpoints
-│   └── static/                  # Web interface
-│       └── index.html
-├── src/                         # Core pipeline scripts
-│   ├── fetch_papers.py          # ArXiv data collection
-│   ├── build_raft_dataset.py    # Synthetic dataset generation
-│   ├── finetune_qlora.py        # Model fine-tuning
-│   └── build_baseline_rag.py    # RAG system setup
-├── eval/                        # Evaluation framework
-│   ├── evaluate.py              # Model comparison
-│   └── llm_judge.py             # Automated evaluation
-├── data/                        # Generated data (gitignored)
-│   ├── raw/                     # Raw paper metadata
-│   ├── processed/               # Text chunks
-│   ├── raft_dataset/            # Training data
-│   ├── raft_model/              # Fine-tuned model
-│   └── chroma_db/               # Vector database
-├── Dockerfile                   # Container configuration
-├── requirements.txt             # Python dependencies
-└── README.md                    # This file
-```
-
-## 🔧 Configuration
-
-Key parameters can be adjusted in the source files:
-
-### Data Collection (`src/fetch_papers.py`)
-- `SEARCH_QUERIES`: ArXiv search topics
-- `PAPERS_PER_QUERY`: Papers to fetch per topic
-- `CHUNK_SIZE`: Text chunk size for indexing
-
-### Dataset Generation (`src/build_raft_dataset.py`)
-- `NUM_EXAMPLES`: Size of training dataset
-- `NUM_DISTRACTORS`: Number of distracting documents per example
-- `OLLAMA_MODEL`: LLM for question generation
-
-### Fine-tuning (`src/finetune_qlora.py`)
-- `MODEL_NAME`: Base model (currently Phi-2)
-- `LORA_R`: LoRA rank (lower = faster training)
-- `MAX_LENGTH`: Maximum sequence length
-- `NUM_EPOCHS`: Training epochs
-
-### RAG System (`src/build_baseline_rag.py`)
-- `EMBED_MODEL`: Sentence transformer model
-- `TOP_K`: Documents to retrieve
-
-## 🎯 API Endpoints
-
-### Health Check
-```http
-GET /health
-```
-
-### Base RAG (Llama 3)
-```http
-POST /rag/base
-Content-Type: application/json
-
-{
-  "question": "What is retrieval augmented generation?",
-  "top_k": 4
-}
-```
-
-### RAFT Model (Fine-tuned Phi-2)
-```http
-POST /rag/raft
-Content-Type: application/json
-
-{
-  "question": "What is retrieval augmented generation?",
-  "top_k": 4
-}
-```
-
-## 📊 Evaluation Results
-
-The evaluation framework compares:
-- **Base RAG**: Llama 3 with retrieved context
-- **RAFT**: Fine-tuned Phi-2 with RAFT training
-
-Metrics include:
-- Answer accuracy
-- Citation quality
-- Response length
-- Retrieval relevance
-
-Run evaluation:
-```bash
-python eval/evaluate.py
-```
-
-## 🐳 Docker Deployment
-
-Build and run with Docker:
-
-```bash
-# Build image
-docker build -t raft-arxiv .
-
-# Run container
-docker run -p 8000:8000 \
-  -v $(pwd)/data:/app/data \
-  raft-arxiv
-```
-
-## 🔍 Key Technologies
-
-- **Data Collection**: ArXiv API, text chunking
-- **Vector Search**: ChromaDB, Sentence Transformers
-- **LLMs**: Phi-2 (Microsoft), Llama 3 (Meta)
-- **Fine-tuning**: QLoRA, PEFT
-- **API**: FastAPI, Pydantic
-- **Frontend**: Vanilla JavaScript, HTML/CSS
-
-## 📈 Performance Optimizations
-
-- **QLoRA**: 4-bit quantization for memory efficiency
-- **Short sequences**: MAX_LENGTH=256 for faster training
-- **Gradient accumulation**: Reduced batch size requirements
-- **MPS acceleration**: Apple Silicon GPU support
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## 📄 License
-
-MIT License - see LICENSE file for details.
-
-## 🙏 Acknowledgments
-
-- [RAFT Paper](https://arxiv.org/abs/2403.10131) by Zhang et al.
-- Microsoft Phi-2 model
-- Meta Llama 3 via Ollama
-- ArXiv API for paper access
-
-## 📞 Support
-
-For questions or issues:
-- Open an issue on GitHub
-- Check the evaluation results in `eval/results/`
-- Review the API logs for debugging
+> Fine-tuned phi-2 using the RAFT technique on 200 ArXiv ML/AI papers. Benchmarked head-to-head against vanilla RAG using both token-overlap scoring and LLM-as-judge evaluation.
 
 ---
 
-**Note**: This implementation is for educational and research purposes. Model outputs should be verified for accuracy in production use cases.
+## The problem with standard RAG
+
+Standard RAG retrieves documents and passes them to an LLM that was never trained to use them well. It often ignores the retrieved context, hallucinates, or gets confused by irrelevant chunks mixed in.
+
+**RAFT fixes this** by fine-tuning the model specifically to:
+1. Identify the relevant document among a set of distractors
+2. Ground its answer in that document
+3. Refuse to answer when no relevant document exists
+
+---
+
+## Results
+
+### Word overlap scoring (Precision)
+
+| Model | Precision | Delta |
+|---|---|---|
+| Base RAG (Llama3) | 0.202 | — |
+| RAFT (phi-2) | 0.358 | ▲ +77% |
+
+### LLM-as-judge scoring (Llama3 as evaluator, scored 1–5)
+
+| Metric | Base RAG | RAFT | Winner |
+|---|---|---|---|
+| Faithfulness | 3.73 | 4.27 | RAFT ▲ +14.6% |
+| Correctness | 3.93 | 4.13 | RAFT ▲ +5.1% |
+| Conciseness | 4.00 | 4.27 | RAFT ▲ +6.75% |
+
+**RAFT wins on every metric.** Key finding: standard word-overlap metrics favor verbose models — LLM-as-judge gives a fairer comparison by evaluating faithfulness and correctness directly.
+
+---
+
+## Demo
+
+Live side-by-side comparison UI at `http://localhost:8000`:
+
+- Type any ML/AI question
+- Both models answer simultaneously
+- Retrieved documents shown for each
+
+---
+
+## Architecture
+
+```
+ArXiv API (200 papers)
+       ↓
+Text Chunking (634 chunks, ~450 chars each)
+       ↓
+RAFT Dataset Builder
+  - 200 oracle Q&A pairs (generated by Llama3)
+  - 3 distractor docs per example
+  - 80% include oracle / 20% don't (teaches refusal)
+       ↓
+QLoRA Fine-tuning (phi-2, 1 epoch, 3.5 min on Mac M-series)
+       ↓
+      ┌─────────────────────┐
+      │                     │
+ Base RAG              RAFT Model
+ Llama3 + ChromaDB     phi-2 + ChromaDB
+      │                     │
+      └────────┬────────────┘
+               ↓
+     FastAPI REST API + Comparison UI
+```
+
+---
+
+## Stack
+
+| Component | Tool |
+|---|---|
+| Data | arxiv-api, PyMuPDF |
+| Vector DB | ChromaDB |
+| Embeddings | sentence-transformers (MiniLM) |
+| Fine-tuning | HuggingFace PEFT + LoRA |
+| Base model | Microsoft phi-2 (2.7B) |
+| Baseline LLM | Meta Llama3 via Ollama |
+| Evaluation | Token overlap + LLM-as-judge |
+| API | FastAPI + Docker |
+| UI | Vanilla JS (single file) |
+
+---
+
+## Quickstart
+
+```bash
+# 1. Clone and install
+git clone https://github.com/yourusername/raft-arxiv
+cd raft-arxiv
+python3 -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+
+# 2. Pull base model
+ollama pull llama3
+
+# 3. Run full pipeline
+python src/fetch_papers.py        # fetch 200 ArXiv papers
+python src/build_raft_dataset.py  # build RAFT training examples
+python src/finetune_qlora.py      # fine-tune with QLoRA
+python src/build_baseline_rag.py  # build ChromaDB index
+
+# 4. Evaluate
+python eval/evaluate.py           # word overlap benchmark
+python eval/llm_judge.py          # LLM-as-judge benchmark
+
+# 5. Serve
+uvicorn api.serve:app --port 8000
+# Open http://localhost:8000
+```
+
+---
+
+## Project structure
+
+```
+raft-arxiv/
+├── src/
+│   ├── fetch_papers.py          # ArXiv data pipeline
+│   ├── build_raft_dataset.py    # RAFT Q&A + distractor generation
+│   ├── finetune_qlora.py        # QLoRA fine-tuning
+│   └── build_baseline_rag.py   # Base RAG (ChromaDB + Ollama)
+├── eval/
+│   ├── evaluate.py              # Token overlap benchmark
+│   └── llm_judge.py             # LLM-as-judge benchmark
+├── api/
+│   ├── serve.py                 # FastAPI endpoints
+│   └── static/index.html        # Comparison UI
+├── Dockerfile
+└── requirements.txt
+```
+
+---
+
+## Key design decisions
+
+**Abstracts over full PDFs** — sufficient for a strong RAFT demo, removes 500MB download requirement
+
+**phi-2 not Mistral 7B** — 2.7B vs 7B; trains in minutes on Mac M-series CPU/MPS with no GPU needed
+
+**80/20 oracle ratio** — 80% of training examples include the oracle doc (teaches citation); 20% don't (teaches refusal when context is insufficient)
+
+**Dual evaluation** — word overlap alone is misleading (rewards verbosity); LLM-as-judge catches what F1 misses
+
+---
+
+## Reference
+
+Zhang et al., [RAFT: Adapting Language Model to Domain Specific RAG](https://arxiv.org/abs/2403.10131), 2024
